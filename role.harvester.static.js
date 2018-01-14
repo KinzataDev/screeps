@@ -12,7 +12,9 @@ var roleHarvesterStatic = {
         if( !creep.memory.harvestFromSourceId ) {
             // Find an open source
             source = sourceFinder.findSourceNeedsHarvester(creep.room);
-            creep.memory.harvestFromSourceId = source.id;
+            if( source ) {
+              creep.memory.harvestFromSourceId = source.id;
+            }
         }
         else {
           source = Game.getObjectById( creep.memory.harvestFromSourceId );
@@ -26,7 +28,7 @@ var roleHarvesterStatic = {
 
       if( this.shouldDeposit( creep ) ) {
         // Find container close by
-        var containers = creep.pos.findInRange(FIND_STRUCTURES, 3, {
+        var containers = creep.pos.findInRange(FIND_STRUCTURES, 2, {
           filter: (structure) => {
             return structure.structureType == STRUCTURE_CONTAINER;
           }
@@ -36,6 +38,9 @@ var roleHarvesterStatic = {
         if(!containers[0]) {
           creep.drop(RESOURCE_ENERGY);
           creep.say('Opps');
+          
+          // Then create container position
+          this.markLocationForContainer(creep);
           return;
         }
 
@@ -48,7 +53,7 @@ var roleHarvesterStatic = {
         }
 
         // Transfer to it
-        if( creep.pos.x != containers[0].pos.x && creep.pos.y && containers[0].pos.y ) {
+        if( creep.pos.x != containers[0].pos.x || creep.pos.y != containers[0].pos.y ) {
           creep.moveTo(containers[0]);
         }
         else {
@@ -60,6 +65,7 @@ var roleHarvesterStatic = {
 
     shouldHarvest: function(creep) {
       if( creep.carry.energy < creep.carryCapacity ) {
+        // TODO: Don't harvest if resource spawn not full.
         return true;
       }
       else {
@@ -73,6 +79,19 @@ var roleHarvesterStatic = {
       }
       else {
         return false;
+      }
+    },
+    
+    markLocationForContainer(creep) {
+      var pos = creep.pos;
+      var construction_site_containers = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 1, {
+        filter: (structure) => {
+          return structure.structureType == STRUCTURE_CONTAINER;
+        }
+      });
+      if( !construction_site_containers[0] ) {
+        creep.room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+        creep.say("Build it");
       }
     }
 };

@@ -7,6 +7,8 @@
  * mod.thing == 'a thing'; // true
  */
 
+var spawner = require('Spawn.spawner');
+
 var desiredHarvesterCount = 1;
 var desiredHarvesterStaticCount = 1;
 var desiredUpgraderCount = 1;
@@ -28,21 +30,15 @@ var buildMap = {
 
 var roomSpawner = {
 
-    spawn: function(parts, role) {
-        var retVal = -1;
-        var spawn = Game.spawns.Spawn1;
-        if( (retVal = spawn.canCreateCreep( parts, undefined) ) == OK ) {
-            spawn.createCreep(parts, undefined, {'role':role});
-        } else {
-            var response = spawn.canCreateCreep( parts, undefined);
-            console.log("Error spawning creep, error code: " + response);
-        }
-        return retVal;
-    },
-
     run: function() {
-        if( Game.spawns.Spawn1.room.controller.level == 1 ) {
+        var spawn = Game.spawns.Spawn1;
+        if( spawn.room.controller.level == 1 ) {
           desiredHarvesterCount = 5;
+          desiredHarvesterCount = 0;
+          desiredHarvesterStaticCount = 0;
+          desiredUpgraderCount = 0;
+          desiredBuilderCount = 0;
+          desiredTruckCount = 0;
         }
         else {
           desiredHarvesterCount = 1;
@@ -63,11 +59,12 @@ var roomSpawner = {
         }
 
         // If missing one of any type, set limits to 1
-        if( numHarvesters == 0 ||
+        if( spawn.room.controller.level != 1 && (
+            numHarvesters == 0 ||
             numStaticHarvesters == 0 ||
             numUpgraders == 0 ||
             numBuilders == 0 ||
-            numTrucks == 0
+            numTrucks == 0 )
           )
         {
           desiredHarvesterCount = 1;
@@ -78,68 +75,74 @@ var roomSpawner = {
         }
         else {
           desiredHarvesterCount = 1;
-          desiredHarvesterStaticCount = 4;
+          desiredHarvesterStaticCount = spawn.room.find(FIND_SOURCES).length;
           desiredUpgraderCount = 4;
           desiredBuilderCount = 3;
-          desiredTruckCount = 8;
+          desiredTruckCount = 4;
         }
 
         var nothingToBuild = true;
         // Always top off harvesters - without these, could cascade to nothing
         if( numHarvesters < desiredHarvesterCount ) {
-            this.spawn(HARVESTER_PARTS, 'harvester');
+            spawner.spawn(spawn, global.CREEP_TYPES.HARVESTER);
             nothingToBuild = false;
         }
 
         var toBuild = buildMap[Memory.lastBuilt];
         console.log("To build: " + toBuild);
 
-        if( toBuild == 'harvester_static'  ) {
+        if( toBuild == global.CREEP_TYPES.HARVESTER_STATIC  ) {
           if( numStaticHarvesters >= desiredHarvesterStaticCount ) {
-            Memory.lastBuilt = 'harvester_static';
+            Memory.lastBuilt = global.CREEP_TYPES.HARVESTER_STATIC;
           }
           else {
-            if( this.spawn(HARVESTER_STATIC_PARTS, 'harvester_static') == OK ) {
-              Memory.lastBuilt = 'harvester_static';
+            if( spawner.spawn(spawn, global.CREEP_TYPES.HARVESTER_STATIC) == OK ) {
+              Memory.lastBuilt = global.CREEP_TYPES.HARVESTER_STATIC;
             }
             nothingToBuild = false;
           }
         }
 
-        if( toBuild == 'truck' ) {
-          if( numTrucks >= desiredTruckCount ) {
-            Memory.lastBuilt = 'truck';
+        if( toBuild == global.CREEP_TYPES.TRUCK ) {
+          // First see if there are any pickup locations...
+          var pickup_locations = Object.keys(Memory.rooms[spawn.room.name].pickup).length;
+          if( pickup_locations == 0 || numTrucks >= desiredTruckCount ) {
+            Memory.lastBuilt = global.CREEP_TYPES.TRUCK;
           }
           else {
-            if( this.spawn(TRUCK_PARTS, 'truck') == OK ) {
-              Memory.lastBuilt = 'truck';
+            if( spawner.spawn(spawn, global.CREEP_TYPES.TRUCK) == OK ) {
+              Memory.lastBuilt = global.CREEP_TYPES.TRUCK;
             }
             nothingToBuild = false;
           }
         }
 
-        if( toBuild == 'upgrader' ) {
+        if( toBuild == global.CREEP_TYPES.UPGRADER ) {
           if( numUpgraders >= desiredUpgraderCount ) {
-            Memory.lastBuilt = 'upgrader';
+            Memory.lastBuilt = global.CREEP_TYPES.UPGRADER;
           }
           else {
-            if( this.spawn(UPGRADER_PARTS, 'upgrader') == OK ) {
-              Memory.lastBuilt = 'upgrader';
+            if( spawner.spawn(spawn, global.CREEP_TYPES.UPGRADER) == OK ) {
+              Memory.lastBuilt = global.CREEP_TYPES.UPGRADER;
             }
             nothingToBuild = false;
           }
         }
 
-        if( toBuild == 'builder' ) {
+        if( toBuild == global.CREEP_TYPES.BUILDER ) {
           if( numBuilders >= desiredBuilderCount ) {
-            Memory.lastBuilt = 'builder';
+            Memory.lastBuilt = global.CREEP_TYPES.BUILDER;
           }
           else {
-            if( this.spawn(BUILDER_PARTS, 'builder') == OK ) {
-              Memory.lastBuilt = 'builder';
+            if( spawner.spawn(spawn, global.CREEP_TYPES.BUILDER) == OK ) {
+              Memory.lastBuilt = global.CREEP_TYPES.BUILDER;
             }
             nothingToBuild = false;
           }
+        }
+
+        if( !toBuild ) {
+          Memory.lastBuilt = 'builder';
         }
 
         if( nothingToBuild ) {

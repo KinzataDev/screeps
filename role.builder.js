@@ -1,14 +1,16 @@
+var util = require('Util.core');
+
 var roleBuilder = {
 
     /** @param {Creep} creep **/
     run: function(creep) {
+
        if(creep.memory.building && creep.carry.energy == 0) {
             creep.memory.building = false;
             creep.memory.voiceState = 1;
         }
         if(!creep.memory.building && creep.carry.energy == creep.carryCapacity) {
             creep.memory.building = true;
-            creep.memory.hasCheckedForResources = false;
             creep.say('Thanks!');
         }
 
@@ -36,6 +38,10 @@ var roleBuilder = {
               else {
                 if( creep.memory.repairingId ) {
                   var target = Game.getObjectById(creep.memory.repairingId);
+                  if( !target ) {
+                    creep.memory.repairingId = undefined;
+                    return;
+                  }
                   if( target.hits < target.hitsMax ) {
                     if( target.structureType == STRUCTURE_WALL && target.hits > Memory.maxWallHits ) {
                       creep.memory.repairingId = undefined;
@@ -74,28 +80,33 @@ var roleBuilder = {
             creep.memory.voiceState = 0;
           }
 
-          // First check for resources on the ground nearby
-          if( !creep.memory.hasCheckedForResources ) {
-            var resources = creep.pos.findInRange(FIND_DROPPED_ENERGY, 7);
-            if( resources.length ) {
-              if( creep.pickup(resources[0]) == ERR_NOT_IN_RANGE) {
-                creep.moveTo(resources[0]);
-              }
+          var container = creep.pos.findClosestByRange(FIND_STRUCTURES,
+            {
+            filter: (structure) => {
+              return (structure.structureType == STRUCTURE_CONTAINER && structure.store[RESOURCE_ENERGY] > 0 );
             }
-            else {
-              creep.memory.hasCheckedForResources = true;
-            }
+          });
+
+          var toHarvest = container;
+          var resource = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES);
+
+          if( resource ) {
+            toHarvest = creep.pos.findClosestByRange([container,resource]);
           }
-          else {
-            var container = creep.pos.findClosestByRange(FIND_STRUCTURES, {
-              filter: (structure) => {
-                return (structure.structureType == STRUCTURE_CONTAINER && structure.store[RESOURCE_ENERGY] > 0 );
-              }
-            });
+
+          if( !toHarvest ) { return; }
+
+          if( toHarvest.structureType ) {
             if( creep.withdraw(container, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
               creep.moveTo(container);
             }
           }
+          else {
+            if( creep.pickup(resource) == ERR_NOT_IN_RANGE) {
+             creep.moveTo(resource);
+            }
+          }
+
         }
 	}
 };

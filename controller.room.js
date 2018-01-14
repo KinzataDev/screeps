@@ -1,10 +1,16 @@
+var util = require('Util.core');
+
 var roomController = {
 
     /** @param {Room} room **/
     run: function(room) {
       // Build a queue of tasks to take
       if( !room.memory.refillQueue ) {
-        room.memory.refillQueue = {};
+          room.memory.refillQueue = {};
+      }
+
+      if( util.resetOn(10) ) {
+        this.addRoadContruction(room);
       }
 
       this.controlTowers(room);
@@ -80,6 +86,29 @@ var roomController = {
         room.memory.refillQueue[openTasks[0].id].ownerId = creep.id;
         console.log("Refill task taken from room: " + room.name);
         return openTasks[0].id;
+      }
+    },
+
+    addRoadContruction: function(room) {
+      // Don't add more than 10 road construction sites
+      if( Object.keys(Game.constructionSites).length > 10 ) { return; }
+      var flags = room.find(FIND_FLAGS, {
+        filter: (f) => { return (f.color == COLOR_WHITE); }
+      });
+
+      var i = 0;
+      for( var name in flags ) {
+        var p = flags[name].pos;
+        var look = _.filter(room.lookAt(p.x, p.y),
+          (s) => s.type != LOOK_STRUCTURES && s.type != LOOK_CONSTRUCTION_SITES
+        );
+        console.log(JSON.stringify(look));
+        if( look.length ) {
+          room.createConstructionSite(p.x,p.y, STRUCTURE_ROAD);
+          flags[name].remove();
+        }
+        i++;
+        if( i > 5 ) { return; }
       }
     }
 };

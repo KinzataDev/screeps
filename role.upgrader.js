@@ -1,4 +1,5 @@
 var sourceFinder = require('source.finder');
+var util = require('Util.core');
 
 var roleUpgrader = {
 
@@ -7,18 +8,28 @@ var roleUpgrader = {
 
       if(creep.memory.upgrading && creep.carry.energy == 0) {
             creep.memory.upgrading = false;
+            creep.memory.comingFrom = creep.room.controller.id;
             creep.say('harvesting');
 	    }
 	    if(!creep.memory.upgrading && creep.carry.energy == creep.carryCapacity) {
 	        creep.memory.upgrading = true;
           creep.memory.hasCheckedForResources = false;
 	        creep.say('upgrading');
+
+          // Find controller
+          creep.memory.movingTo = creep.room.controller.id;
 	    }
 
 	    if(creep.memory.upgrading) {
-            if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-                creep.moveTo(creep.room.controller);
-            }
+        var controller = Game.getObjectById(creep.memory.movingTo);
+        if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
+
+          if( !creep.memory.movingTo ) {
+            creep.memory.movingTo = creep.room.controller.id;
+          }
+
+          util.moveCreep(creep);
+        }
       }
       else {
         if( !creep.memory.hasCheckedForResources ) {
@@ -43,8 +54,12 @@ var roleUpgrader = {
             //sourceFinder.findInAdjacentRooms(creep);
           }
           //var sources = creep.room.find(FIND_SOURCES);
-          if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
+          var harvestResult = creep.harvest(source);
+          creep.memory.movingTo = harvestResult.id;
+          if( harvestResult == ERR_NOT_IN_RANGE) {
               creep.moveTo(source);
+          } else if( harvestResult == OK ) {
+            creep.memory.comingFrom = source.id;
           }
         }
       }

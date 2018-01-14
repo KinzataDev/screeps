@@ -52,13 +52,13 @@ sourceFinder = {
         for( var id in sourceIds ) {
           var source = Game.getObjectById(id);
 
-          var numHarvesters = source.pos.findInRange(FIND_MY_CREEPS, 3, {
+          var numHarvesters = source.pos.findInRange(FIND_MY_CREEPS, 2, {
             filter: (creep) => {
               return creep.memory.role == 'harvester_static';
             }
           }).length;
 
-          if( numHarvesters < 2 ) {
+          if( numHarvesters < 1 ) {
             return source;
           }
         }

@@ -1,3 +1,16 @@
+
+global.CREEP_TYPES = {
+  HARVESTER: 'harvester',
+  HARVESTER_STATIC: 'harvester_static',
+  TRUCK: 'truck',
+  UPGRADER: 'upgrader',
+  BUILDER: 'builder',
+};
+
+global.SPAWN_PERCENTAGE = 1;
+
+global.paths = {};
+
 var roleHarvester = require('role.harvester');
 var roleHarvesterStatic = require('role.harvester.static');
 var roleUpgrader = require('role.upgrader');
@@ -9,6 +22,11 @@ var roomController = require('controller.room');
 var roomSpawner = require('room.spawner');
 
 module.exports.loop = function () {
+
+    // for(var f in Game.flags ) {
+    //   Game.flags[f].remove();
+    // }
+
 
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
@@ -22,9 +40,22 @@ module.exports.loop = function () {
     for(var name in rooms) {
 
       var room = rooms[name];
-      //console.log(room);
-      //console.log(Game.map.describeExits(room.name)[RIGHT]);
       roomController.run(rooms[name]);
+
+      var paths = global.paths;
+
+      for( name in paths ) {
+        for( iname in paths[name]) {
+          paths[name][iname].forEach(function(p) {
+            var look = _.filter(room.lookAt(p.x, p.y),
+              (s) => s.type == LOOK_FLAGS || s.type == LOOK_STRUCTURES || s.type == LOOK_CONSTRUCTION_SITES
+            );
+            if( look.length == 0 ) {
+              room.createFlag(p);
+            }
+          });
+        }
+      }
     }
 
     roomSpawner.run();
